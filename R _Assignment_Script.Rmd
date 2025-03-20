@@ -1,0 +1,220 @@
+
+```{r}
+
+# Load necessary library
+library(dplyr)
+
+# Step 1: Read the original genotypes file (fang_et_al_genotypes.txt)
+extracted_data <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# Step 2: Arrange the data by 'Sample_ID' column
+extracted_data <- arrange(extracted_data, `Sample_ID`)
+
+# Step 3: Transpose the data (excluding the first 3 columns) and convert to tibble
+transposed_data <- as_tibble(t(extracted_data[, 4:ncol(extracted_data)]), rownames = "SNP_ID")
+
+# Step 4: Set the column names: "SNP_ID" followed by the first column from the original genotypes
+colnames(transposed_data) <- c("SNP_ID", unlist(extracted_data[1:nrow(extracted_data), 1]), use.names = FALSE)
+
+# Step 5: Save the transposed data to a new file (transposed_genotypes.txt) without quotes
+write.table(transposed_data, "transposed_genotypes.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 6: Extract first line from snp_position.txt, sort, and save it
+snp_position <- read.table("snp_position.txt", header = TRUE, sep = "\t")
+cols1 <- as.vector(t(head(snp_position, 1)))  # Extract first line and convert to vector
+cols1_sorted <- sort(cols1)
+write(cols1_sorted, "cols1.txt", sep = "\n")
+
+# Step 7: Extract first line from transposed_genotypes.txt, sort, and save it
+transposed_genotypes_header <- as.vector(t(head(transposed_data, 1)))  # Convert first row to vector
+cols2_sorted <- sort(transposed_genotypes_header)
+write(cols2_sorted, "cols2.txt", sep = "\n")
+
+# Step 8: Find common elements in cols1.txt and cols2.txt
+cols1 <- readLines("cols1.txt")
+cols2 <- readLines("cols2.txt")
+common_cols <- intersect(cols1, cols2)
+write(common_cols, "common_columns.txt")
+
+# Step 9: Using grep with specific format matching
+snp_position_first_line <- head(snp_position, 1)
+transposed_genotypes_first_line <- head(transposed_data, 1)
+snp_position_sorted <- sort(as.vector(t(snp_position_first_line)))
+transposed_genotypes_sorted <- sort(as.vector(t(transposed_genotypes_first_line)))
+matching_cols <- intersect(snp_position_sorted, transposed_genotypes_sorted)
+write(matching_cols, "matching_columns.txt")
+
+# Step 10: Remove the first two lines (like `tail -n +3` in UNIX)
+transposed_1header <- tail(transposed_data, -2)
+write.table(transposed_1header, "transposed_1header.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 11: Get number of columns in transposed_1header.txt
+num_columns <- ncol(read.table("transposed_1header.txt", header = TRUE, sep = "\t"))
+write(num_columns, "num_columns.txt")
+
+# Step 12: Replace "Group" with "SNP_ID" in the header (replicating `sed` step)
+transposed_1header_updated <- read.table("transposed_1header.txt", header = TRUE, sep = "\t")
+
+# Removing the "Group" column and replacing "Group" with "SNP_ID"
+if ("Group" %in% colnames(transposed_1header_updated)) {
+  transposed_1header_updated <- transposed_1header_updated[, !colnames(transposed_1header_updated) %in% "Group"]
+}
+
+# Replace "Group" with "SNP_ID" in the column names
+colnames(transposed_1header_updated) <- sub("Group", "SNP_ID", colnames(transposed_1header_updated))
+
+# Remove the last row
+transposed_SNP_ID <- transposed_1header_updated[-nrow(transposed_1header_updated), ]
+write.table(transposed_SNP_ID, "transposed_SNP_ID.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 13: Merge snp_position.txt and transposed_SNP_ID.txt by "SNP_ID"
+snp_position <- read.table("snp_position.txt", header = TRUE, sep = "\t")
+transposed_SNP_ID <- read.table("transposed_SNP_ID.txt", header = TRUE, sep = "\t")
+merged <- merge(snp_position, transposed_SNP_ID, by = "SNP_ID")
+write.table(merged, "merged.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 14: Cut specific columns and save the result
+maize <- merged[, c(1, 3, 4, 2508:2797, 1225:2480, 2481:2507)]
+write.table(maize, "maize.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 15: Sort maize.txt by the third column (Position)
+# Convert "Position" column to numeric, replace non-numeric values with NA
+maize$Position <- as.numeric(as.character(maize$Position))
+maize_sorted <- maize[order(maize$Position), ]
+write.table(maize_sorted, "maize_sorted.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 16: Count unique occurrences in the second column
+counts <- table(maize_sorted$Chromosome)
+write(counts, "unique_counts.txt")
+
+# Step 17: Subset data by specific values in the second column (Chromosome)
+subset_data <- function(data, value, filename) {
+  selected <- data[data$Chromosome == value, ]
+  write.table(selected, filename, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+# Loop through chromosomes 1 to 10 and subset
+for (i in 1:10) {
+  subset_data(maize_sorted, i, paste0("Maize_chr", i, ".txt"))
+}
+
+# Step 18: Create a directory for descending files and move them
+dir.create("Maize_ascend")
+file.rename(list.files(pattern = "Maize_chr[0-9]+.txt"), file.path("Maize_ascend", list.files(pattern = "Maize_chr[0-9]+.txt")))
+
+# Step 19: Extract the first line (header) from Maize_sorted.txt
+header <- head(maize_sorted, 1)
+
+# Step 20: Filter rows where the second column is "multiple" (for Maize_chrm.txt)
+maize_chrm <- maize_sorted[maize_sorted$Chromosome == "multiple", ]
+
+# Combine header with the filtered data and write to Maize_chrm.txt
+maize_chrm_final <- rbind(header, maize_chrm)
+write.table(maize_chrm_final, "Maize_chrm.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 21: Filter rows where the second column is "unknown" (for Maize_chru.txt)
+maize_chru <- maize_sorted[maize_sorted$Chromosome == "unknown", ]
+
+# Combine header with the filtered data and write to Maize_chru.txt
+maize_chru_final <- rbind(header, maize_chru)
+write.table(maize_chru_final, "Maize_chru.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 22: Replace all occurrences of "?" with "-" in Maize_sorted.txt
+maize_sorted_content <- readLines("Maize_sorted.txt")
+maize_hyphen_content <- gsub("\\?", "-", maize_sorted_content)
+writeLines(maize_hyphen_content, "Maize_hyphen.txt")
+
+# Step 23: Sort Maize_hyphen.txt in descending order by Position
+maize_hyphen <- read.table("Maize_hyphen.txt", header = TRUE, sep = "\t")
+maize_hyphen_sorted <- maize_hyphen[order(-maize_hyphen$Position), ]
+write.table(maize_hyphen_sorted, "Maize_descend.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 24: Subset data for chromosomes 1 to 10
+for (i in 1:10) {
+  subset_data(maize_hyphen_sorted, i, paste0("Maize_chrd", i, ".txt"))
+}
+
+# Step 25: Check column numbers for descending files
+col_counts_descend <- sapply(list.files(pattern = "Maize_chrd[0-9]+.txt"), function(f) ncol(read.table(f, header = TRUE, sep = "\t")))
+write(col_counts_descend, "column_counts_descend.txt")
+
+# Step 26: Create a directory for descending files and move them
+dir.create("Maize_descend")
+file.rename(list.files(pattern = "Maize_chrd[0-9]+.txt"), file.path("Maize_descend", list.files(pattern = "Maize_chrd[0-9]+.txt")))
+
+
+
+#For Teosinte
+# Step 1: Cut specific columns and save the result
+teosinte <- merged[, c(1, 3, 4, 89:998, 1178:1218, 989:1022)]
+write.table(teosinte, "teosinte.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 2: Sort teosinte.txt by the third column (Position)
+# Convert "Position" column to numeric, replace non-numeric values with NA
+teosinte$Position <- as.numeric(as.character(teosinte$Position))
+teosinte_sorted <- teosinte[order(teosinte$Position), ]
+write.table(teosinte_sorted, "teosinte_sorted.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 3: Count unique occurrences in the second column
+counts <- table(teosinte_sorted$Chromosome)
+write(counts, "unique_counts.txt")
+
+# Step 4: Subset data by specific values in the second column (Chromosome)
+subset_data <- function(data, value, filename) {
+  selected <- data[data$Chromosome == value, ]
+  write.table(selected, filename, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+# Loop through chromosomes 1 to 10 and subset
+for (i in 1:10) {
+  subset_data(teosinte_sorted, i, paste0("Teosinte_chr", i, ".txt"))
+}
+
+# Step 5: Create a directory for descending files and move them
+dir.create("Teosinte_ascend")
+file.rename(list.files(pattern = "Teosinte_chr[0-9]+.txt"), file.path("Teosinte_ascend", list.files(pattern = "Teosinte_chr[0-9]+.txt")))
+
+# Step 6: Extract the first line (header) from Teosinte_sorted.txt
+header <- head(teosinte_sorted, 1)
+
+# Step 7: Filter rows where the second column is "multiple" (for Teosinte_chrm.txt)
+teosinte_chrm <- teosinte_sorted[teosinte_sorted$Chromosome == "multiple", ]
+
+# Combine header with the filtered data and write to Teosinte_chrm.txt
+teosinte_chrm_final <- rbind(header, teosinte_chrm)
+write.table(teosinte_chrm_final, "Teosinte_chrm.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 8: Filter rows where the second column is "unknown" (for Teosinte_chru.txt)
+teosinte_chru <- teosinte_sorted[teosinte_sorted$Chromosome == "unknown", ]
+
+# Combine header with the filtered data and write to Teosinte_chru.txt
+teosinte_chru_final <- rbind(header, teosinte_chru)
+write.table(teosinte_chru_final, "Teosinte_chru.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Step 9: Replace all occurrences of "?" with "-" in Teosinte_sorted.txt
+teosinte_sorted_content <- readLines("Teosinte_sorted.txt")
+teosinte_hyphen_content <- gsub("\\?", "-", teosinte_sorted_content)
+writeLines(teosinte_hyphen_content, "Teosinte_hyphen.txt")
+
+# Step 10: Sort Teosinte_hyphen.txt in descending order by Position
+teosinte_hyphen <- read.table("Teosinte_hyphen.txt", header = TRUE, sep = "\t")
+teosinte_hyphen_sorted <- teosinte_hyphen[order(-teosinte_hyphen$Position), ]
+write.table(teosinte_hyphen_sorted, "Teosinte_descend.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+
+# Step 11: Subset data for chromosomes 1 to 10
+for (i in 1:10) {
+  subset_data(teosinte_hyphen_sorted, i, paste0("Teosinte_chrd", i, ".txt"))
+}
+
+# Step 12: Check column numbers for descending files
+col_counts_descend <- sapply(list.files(pattern = "Teosinte_chrd[0-9]+.txt"), function(f) ncol(read.table(f, header = TRUE, sep = "\t")))
+write(col_counts_descend, "column_counts_descend.txt")
+
+# Step 13: Create a directory for descending files and move them
+dir.create("Teosinte_descend")
+file.rename(list.files(pattern = "Teosinte_chrd[0-9]+.txt"), file.path("Teosinte_descend", list.files(pattern = "Teosinte_chrd[0-9]+.txt")))
+
+
+
+```
+
