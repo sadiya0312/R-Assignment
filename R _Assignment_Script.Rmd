@@ -1,6 +1,86 @@
 
 ```{r}
 
+#Inspecting fang_et_al_genotypes.txt
+# Read the file
+genotypes <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# 1. File size (in bytes)
+file_size <- file.info("fang_et_al_genotypes.txt")$size
+print(paste("File size (bytes):", file_size))
+
+# 2. View the first 6 rows (head) of the data
+head(genotypes)
+
+# 3. View the last 6 rows (tail) of the data
+tail(genotypes)
+
+# 4. Number of rows and columns in the data
+num_rows <- nrow(genotypes)
+num_cols <- ncol(genotypes)
+print(paste("Number of rows:", num_rows))
+print(paste("Number of columns:", num_cols))
+
+# 5. Check for missing data in the data
+# Check for the presence of "?" in the entire dataset
+missing_data_placeholder <- sum(genotypes == "?/?")
+print(paste("Number of '?/?' placeholders:", missing_data_placeholder))
+
+# 6. Most common element in the "Group" column
+most_common_group <- names(sort(table(genotypes$Group), decreasing = TRUE))[1]
+print(paste("Most common element in Group column:", most_common_group))
+
+# 7. Most common element in the "Gene" column
+most_common_gene <- names(sort(table(snp_position$gene), decreasing = TRUE))[1]
+print(paste("Most common element in gene column:", most_common_gene))
+
+# After inspection, I learnt the file size is 10.54 mb
+# The data has 2782 rows and 986 columns
+# There is 135452 missing data encoded by ?/?
+# The most common group is "ZMMLR"
+# The file is ASCII text with very long lines
+
+#Inspecting snp_position.txt
+# Read the file
+snp_position <- read.table("snp_position.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# 1. File size (in bytes)
+file_size_snp <- file.info("snp_position.txt")$size
+print(paste("File size (bytes):", file_size_snp))
+
+# 2. View the first 6 rows (head) of the data
+head(snp_position)
+
+# 3. View the last 6 rows (tail) of the data
+tail(snp_position)
+
+# 4. Number of rows and columns in the data
+num_rows_snp <- nrow(snp_position)
+num_cols_snp <- ncol(snp_position)
+print(paste("Number of rows:", num_rows_snp))
+print(paste("Number of columns:", num_cols_snp))
+
+# 5. Check for missing data in the data
+# Check for the presence of "?" in the entire dataset
+missing_data_placeholder <- sum(snp_position == "?/?")
+print(paste("Number of '?/?' placeholders:", missing_data_placeholder))
+
+# 6. Most common element in the "Chromosome" column
+most_common_chromosome <- names(sort(table(snp_position$Chromosome), decreasing = TRUE))[1]
+print(paste("Most common element in Chromosome column:", most_common_chromosome))
+
+
+# After inspection, I learnt the file size is 79 kb
+# The data has 983 rows and 15 columns
+# There is no missing data
+# The most common chromosome number is 1
+# The most common gene type is "Zmm28"
+# The file is ASCII text with very long lines
+
+
+
+
+#Data Processing
 # Load necessary library
 library(dplyr)
 
