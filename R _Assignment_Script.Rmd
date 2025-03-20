@@ -1,6 +1,8 @@
 
 ```{r}
 
+#DATA INSPECTION
+
 #Inspecting fang_et_al_genotypes.txt
 # Read the file
 genotypes <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
@@ -34,11 +36,15 @@ print(paste("Most common element in Group column:", most_common_group))
 most_common_gene <- names(sort(table(snp_position$gene), decreasing = TRUE))[1]
 print(paste("Most common element in gene column:", most_common_gene))
 
+
+
 # After inspection, I learnt the file size is 10.54 mb
 # The data has 2782 rows and 986 columns
 # There is 135452 missing data encoded by ?/?
 # The most common group is "ZMMLR"
 # The file is ASCII text with very long lines
+
+
 
 #Inspecting snp_position.txt
 # Read the file
@@ -70,6 +76,7 @@ most_common_chromosome <- names(sort(table(snp_position$Chromosome), decreasing 
 print(paste("Most common element in Chromosome column:", most_common_chromosome))
 
 
+
 # After inspection, I learnt the file size is 79 kb
 # The data has 983 rows and 15 columns
 # There is no missing data
@@ -80,7 +87,8 @@ print(paste("Most common element in Chromosome column:", most_common_chromosome)
 
 
 
-#Data Processing
+#DATA PROCESSING
+
 # Load necessary library
 library(dplyr)
 
@@ -135,7 +143,7 @@ write(num_columns, "num_columns.txt")
 # Step 12: Replace "Group" with "SNP_ID" in the header (replicating `sed` step)
 transposed_1header_updated <- read.table("transposed_1header.txt", header = TRUE, sep = "\t")
 
-# Removing the "Group" column and replacing "Group" with "SNP_ID"
+# Remove the "Group" column and replace "Group" with "SNP_ID"
 if ("Group" %in% colnames(transposed_1header_updated)) {
   transposed_1header_updated <- transposed_1header_updated[, !colnames(transposed_1header_updated) %in% "Group"]
 }
@@ -296,5 +304,47 @@ file.rename(list.files(pattern = "Teosinte_chrd[0-9]+.txt"), file.path("Teosinte
 
 
 
+# DATA VISUALIZATION
+
+# Distribution of SNPs between chromosomes
+
+# Load necessary libraries
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+# Read the maize_sorted.txt data
+maize_data <- read_delim("maize_sorted.txt", delim = "\t")
+
+# Check for missing values and view the structure (optional)
+summary(maize_data)
+head(maize_data)
+
+# Plot the distribution of SNPs by Chromosome
+ggplot(maize_data, aes(x = Chromosome)) +
+  geom_bar() +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  ggtitle("Distribution of SNPs by Chromosome") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+
+# Distribution of SNPs position per chromsome
+
+# Define the proper chromosome order including "multiple" and "unknown"
+proper_chromosome_order <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")
+
+# Convert the Chromosome column to a factor with the proper order
+maize_data$Chromosome <- factor(maize_data$Chromosome, levels = proper_chromosome_order)
+
+# Plot the SNP distribution on chromosomes using density plot
+ggplot(data = maize_data) + 
+  geom_density(aes(x = Position, color = Chromosome, y = after_stat(count))) + 
+  theme_minimal() +
+  ggtitle("Maize SNP Distribution on Chromosomes") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+#This was repeated for Teosinte using Maize_hyphen.txt in place of maize_sorted.txt
 ```
 
