@@ -1,0 +1,328 @@
+```{r}
+
+#DATA INSPECTION
+
+#Inspecting fang_et_al_genotypes.txt
+# Read the file
+genotypes <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# 1. File size (in bytes)
+file_size <- file.info("fang_et_al_genotypes.txt")$size
+print(paste("File size (bytes):", file_size))
+
+# 2. View the first 6 rows (head) of the data
+head(genotypes)
+
+# 3. View the last 6 rows (tail) of the data
+tail(genotypes)
+
+# 4. Number of rows and columns in the data
+num_rows <- nrow(genotypes)
+num_cols <- ncol(genotypes)
+print(paste("Number of rows:", num_rows))
+print(paste("Number of columns:", num_cols))
+
+# 5. Check for missing data in the data
+# Check for the presence of "?" in the entire dataset
+missing_data_placeholder <- sum(genotypes == "?/?")
+print(paste("Number of '?/?' placeholders:", missing_data_placeholder))
+
+# 6. Most common element in the "Group" column
+most_common_group <- names(sort(table(genotypes$Group), decreasing = TRUE))[1]
+print(paste("Most common element in Group column:", most_common_group))
+
+# 7. Most common element in the "Gene" column
+most_common_gene <- names(sort(table(snp_position$gene), decreasing = TRUE))[1]
+print(paste("Most common element in gene column:", most_common_gene))
+
+
+
+# After inspection, I learnt the file size is 10.54 mb
+# The data has 2782 rows and 986 columns
+# There is 135452 missing data encoded by ?/?
+# The most common group is "ZMMLR"
+# The file is ASCII text with very long lines
+
+
+
+#Inspecting snp_position.txt
+# Read the file
+snp_position <- read.table("snp_position.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# 1. File size (in bytes)
+file_size_snp <- file.info("snp_position.txt")$size
+print(paste("File size (bytes):", file_size_snp))
+
+# 2. View the first 6 rows (head) of the data
+head(snp_position)
+
+# 3. View the last 6 rows (tail) of the data
+tail(snp_position)
+
+# 4. Number of rows and columns in the data
+num_rows_snp <- nrow(snp_position)
+num_cols_snp <- ncol(snp_position)
+print(paste("Number of rows:", num_rows_snp))
+print(paste("Number of columns:", num_cols_snp))
+
+# 5. Check for missing data in the data
+# Check for the presence of "?" in the entire dataset
+missing_data_placeholder <- sum(snp_position == "?/?")
+print(paste("Number of '?/?' placeholders:", missing_data_placeholder))
+
+# 6. Most common element in the "Chromosome" column
+most_common_chromosome <- names(sort(table(snp_position$Chromosome), decreasing = TRUE))[1]
+print(paste("Most common element in Chromosome column:", most_common_chromosome))
+
+
+
+# After inspection, I learnt the file size is 79 kb
+# The data has 983 rows and 15 columns
+# There is no missing data
+# The most common chromosome number is 1
+# The most common gene type is "Zmm28"
+# The file is ASCII text with very long lines
+
+
+
+
+#DATA PROCESSING
+
+# Load necessary library
+library(dplyr)
+
+#Read the original genotypes file (fang_et_al_genotypes.txt) and (snp_position)
+genotypes <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+snp_position <- read.table("snp_position.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# Transpose the data
+transposed_genotypes <- as.data.frame(t(genotypes), stringsAsFactors = FALSE)
+
+# Convert first row to column names
+colnames(transposed_genotypes) <- transposed_genotypes[3, ]  
+
+# Remove the first row as it's now the column names
+transposed_genotypes <- transposed_genotypes[-c(1,2) ]
+
+# Add original column names as a new first column
+transposed_genotypes <- cbind(Original_Colnames = rownames(transposed_genotypes), transposed_genotypes)
+transposed_genotypes <- transposed_genotypes[-c(1:3), ]
+colnames(transposed_genotypes)[1] <- "SNP_ID"
+
+# Reset row names
+rownames(transposed_genotypes) <- NULL
+
+
+# Extract needed columns for merging
+snp_extract <- select(snp_position, SNP_ID, Chromosome, Position)
+
+
+# Merge snp_position and transposed_genotypes by "SNP_ID"
+colnames(transposed_genotypes) <- make.unique(colnames(transposed_genotypes))
+merged <- left_join(snp_extract, transposed_genotypes, by = "SNP_ID")
+
+# Extract maize columns
+maize <- merged %>% select(SNP_ID, Chromosome = Chromosome, Position = Position, 
+                                 starts_with("ZMMIL"), starts_with("ZMMLR"), starts_with("ZMMMR"))
+
+
+# Subset data by specific values in the Chromosome column and sort by Position
+subset_data <- function(data, value, filename) {
+  # Subset the data for the given Chromosome value
+  selected <- data[data$Chromosome == value, ]
+  
+  # Convert the Position column to numeric (ensuring it is numeric before sorting)
+  selected$Position <- as.numeric(as.character(selected$Position))
+  
+  # Sort the selected data by the Position column in ascending order
+  selected_sorted <- selected[order(selected$Position), ]
+  
+  # Write the sorted data to the file
+  write.table(selected_sorted, filename, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+# Loop through chromosomes 1 to 10 and subset
+for (i in 1:10) {
+  subset_data(maize, i, paste0("Maize_chr", i, ".txt"))
+}
+
+
+# Create a directory for ascending files and move them
+dir.create("Maize_ascend")
+file.rename(list.files(pattern = "Maize_chr[0-9]+.txt"), file.path("Maize_ascend", list.files(pattern = "Maize_chr[0-9]+.txt")))
+
+#Extract the first line (header) from maize
+header <- head(maize, 1)
+
+# Filter rows where the second column is "multiple" (for Maize_chrm.txt)
+maize_chrm <- maize[maize$Chromosome == "multiple", ]
+
+# Combine header with the filtered data and write to Maize_chrm.txt
+maize_chrm_final <- rbind(header, maize_chrm)
+write.table(maize_chrm_final, "Maize_chrm.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Filter rows where the second column is "unknown" (for Maize_chru.txt)
+maize_chru <- maize[maize$Chromosome == "unknown", ]
+
+# Combine header with the filtered data and write to Maize_chru.txt
+maize_chru_final <- rbind(header, maize_chru)
+write.table(maize_chru_final, "Maize_chru.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# replace ? with -
+maize_hyphen <- maize
+maize_hyphen[maize_hyphen == "?/?"] <- "-/-"
+
+
+# Subset data by specific values in the Chromosome column and sort by Position in descending order
+subset_data <- function(data, value, filename) {
+  # Subset the data for the given Chromosome value
+  selected <- data[data$Chromosome == value, ]
+  
+  # Convert the Position column to numeric (ensure it is numeric before sorting)
+  selected$Position <- as.numeric(as.character(selected$Position))
+  
+  # Sort the selected data by the Position column in descending order
+  selected_sorted <- selected[order(selected$Position, decreasing = TRUE), ]
+  
+  # Write the sorted data to the file
+  write.table(selected_sorted, filename, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+# Loop through chromosomes 1 to 10 and subset
+for (i in 1:10) {
+  subset_data(maize_hyphen, i, paste0("Maize_chrd", i, ".txt"))
+}
+
+
+
+# Create a directory for descending files and move them
+dir.create("Maize_descend")
+file.rename(list.files(pattern = "Maize_chrd[0-9]+.txt"), file.path("Maize_descend", list.files(pattern = "Maize_chrd[0-9]+.txt")))
+
+
+
+#FOR TEOSINTE
+
+# Extract teosinte columns
+teosinte <- merged %>% select(SNP_ID, Chromosome = Chromosome, Position = Position, 
+                                 starts_with("ZMPBA"), starts_with("ZMPIL"), starts_with("ZMPJA"))
+
+
+# Subset data by specific values in the Chromosome column and sort by Position
+subset_data <- function(data, value, filename) {
+  # Subset the data for the given Chromosome value
+  selected <- data[data$Chromosome == value, ]
+  
+  # Convert the Position column to numeric (ensuring it is numeric before sorting)
+  selected$Position <- as.numeric(as.character(selected$Position))
+  
+  # Sort the selected data by the Position column in ascending order
+  selected_sorted <- selected[order(selected$Position), ]
+  
+  # Write the sorted data to the file
+  write.table(selected_sorted, filename, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+# Loop through chromosomes 1 to 10 and subset
+for (i in 1:10) {
+  subset_data(teosinte, i, paste0("Teosinte_chr", i, ".txt"))
+}
+
+
+# Create a directory for ascending files and move them
+dir.create("Teosinte_ascend")
+file.rename(list.files(pattern = "Teosinte_chr[0-9]+.txt"), file.path("Teosinte_ascend", list.files(pattern = "Teosinte_chr[0-9]+.txt")))
+
+#Extract the first line (header) from teosinte
+header <- head(teosinte, 1)
+
+# Filter rows where the second column is "multiple" 
+teosinte_chrm <- teosinte[teosinte$Chromosome == "multiple", ]
+
+# Combine header with the filtered data and write to Teosinte_chrm.txt
+teosinte_chrm_final <- rbind(header, teosinte_chrm)
+write.table(teosinte_chrm_final, "Teosinte_chrm.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# Filter rows where the second column is "unknown" 
+teosinte_chru <- teosinte[teosinte$Chromosome == "unknown", ]
+
+# Combine header with the filtered data and write to Teosinte_chru.txt
+teosinte_chru_final <- rbind(header, teosinte_chru)
+write.table(teosinte_chru_final, "Teosinte_chru.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
+# replace ? with -
+teosinte_hyphen <- teosinte
+teosinte_hyphen[teosinte_hyphen == "?/?"] <- "-/-"
+
+
+# Subset data by specific values in the Chromosome column and sort by Position in descending order
+subset_data <- function(data, value, filename) {
+  # Subset the data for the given Chromosome value
+  selected <- data[data$Chromosome == value, ]
+  
+  # Convert the Position column to numeric 
+  selected$Position <- as.numeric(as.character(selected$Position))
+  
+  # Sort the selected data by the Position column in descending order
+  selected_sorted <- selected[order(selected$Position, decreasing = TRUE), ]
+  
+  # Write the sorted data to the file
+  write.table(selected_sorted, filename, sep = "\t", row.names = FALSE, quote = FALSE)
+}
+
+# Loop through chromosomes 1 to 10 and subset
+for (i in 1:10) {
+  subset_data(teosinte_hyphen, i, paste0("Teosinte_chrd", i, ".txt"))
+}
+
+
+
+# Create a directory for descending files and move them
+dir.create("Teosinte_descend")
+file.rename(list.files(pattern = "Teosinte_chrd[0-9]+.txt"), file.path("Teosinte_descend", list.files(pattern = "Teosinte_chrd[0-9]+.txt")))
+
+
+
+# DATA VISUALIZATION
+
+# Distribution of SNPs between chromosomes
+
+# Load necessary libraries
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+# Read the maize_sorted.txt data
+maize_data <- read_delim("maize_sorted.txt", delim = "\t")
+
+# Check for missing values and view the structure (optional)
+summary(maize_data)
+head(maize_data)
+
+# Plot the distribution of SNPs by Chromosome
+ggplot(maize_data, aes(x = Chromosome)) +
+  geom_bar() +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  ggtitle("Distribution of SNPs by Chromosome") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+
+# Distribution of SNPs position per chromsome
+
+# Define the proper chromosome order including "multiple" and "unknown"
+proper_chromosome_order <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")
+
+# Convert the Chromosome column to a factor with the proper order
+maize_data$Chromosome <- factor(maize_data$Chromosome, levels = proper_chromosome_order)
+
+# Plot the SNP distribution on chromosomes using density plot
+ggplot(data = maize_data) + 
+  geom_density(aes(x = Position, color = Chromosome, y = after_stat(count))) + 
+  theme_minimal() +
+  ggtitle("Maize SNP Distribution on Chromosomes") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+
+#This was repeated for Teosinte using Maize_hyphen.txt in place of maize_sorted.txt
+```
