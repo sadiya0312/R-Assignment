@@ -1,11 +1,36 @@
-```{r}
+---
+title: "Untitled"
+author: "kofi"
+date: "2025-03-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=TRUE}
+
+#Load libraries
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(tidyr)
+library(purrr)
+
 
 #DATA INSPECTION
 
-#Inspecting fang_et_al_genotypes.txt
-# Read the file
-genotypes <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
+# Read the files
+genotypes <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+snp_position <- read.table("snp_position.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+#Inspecting fang_et_al_genotypes.txt
 # 1. File size (in bytes)
 file_size <- file.info("fang_et_al_genotypes.txt")$size
 print(paste("File size (bytes):", file_size))
@@ -132,7 +157,7 @@ subset_data <- function(data, value, filename) {
   selected <- data[data$Chromosome == value, ]
   
   # Convert the Position column to numeric (ensuring it is numeric before sorting)
-  selected$Position <- as.numeric(as.character(selected$Position))
+  selected$Position <- suppressWarnings(as.numeric(as.character(selected$Position)))
   
   # Sort the selected data by the Position column in ascending order
   selected_sorted <- selected[order(selected$Position), ]
@@ -179,7 +204,7 @@ subset_data <- function(data, value, filename) {
   selected <- data[data$Chromosome == value, ]
   
   # Convert the Position column to numeric (ensure it is numeric before sorting)
-  selected$Position <- as.numeric(as.character(selected$Position))
+  selected$Position <- suppressWarnings(as.numeric(as.character(selected$Position)))
   
   # Sort the selected data by the Position column in descending order
   selected_sorted <- selected[order(selected$Position, decreasing = TRUE), ]
@@ -214,7 +239,7 @@ subset_data <- function(data, value, filename) {
   selected <- data[data$Chromosome == value, ]
   
   # Convert the Position column to numeric (ensuring it is numeric before sorting)
-  selected$Position <- as.numeric(as.character(selected$Position))
+  selected$Position <- suppressWarnings(as.numeric(as.character(selected$Position)))
   
   # Sort the selected data by the Position column in ascending order
   selected_sorted <- selected[order(selected$Position), ]
@@ -261,7 +286,7 @@ subset_data <- function(data, value, filename) {
   selected <- data[data$Chromosome == value, ]
   
   # Convert the Position column to numeric 
-  selected$Position <- as.numeric(as.character(selected$Position))
+  selected$Position <- suppressWarnings(as.numeric(as.character(selected$Position)))
   
   # Sort the selected data by the Position column in descending order
   selected_sorted <- selected[order(selected$Position, decreasing = TRUE), ]
@@ -287,42 +312,110 @@ file.rename(list.files(pattern = "Teosinte_chrd[0-9]+.txt"), file.path("Teosinte
 
 # Distribution of SNPs between chromosomes
 
-# Load necessary libraries
-library(readr)
-library(dplyr)
-library(ggplot2)
-
-# Read the maize_sorted.txt data
-maize_data <- read_delim("maize_sorted.txt", delim = "\t")
-
-# Check for missing values and view the structure (optional)
-summary(maize_data)
-head(maize_data)
 
 # Plot the distribution of SNPs by Chromosome
-ggplot(maize_data, aes(x = Chromosome)) +
-  geom_bar() +
+
+ggplot(data = maize) + 
+    geom_bar(mapping = aes(x = Chromosome, fill = Chromosome)) +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  ggtitle("Distribution of SNPs by Chromosome") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_classic()
+
+
+
+# Scatter plot of the distribution of SNPs by Chromosome
+ggplot(data = maize) + 
+  geom_point(mapping = aes(x = Chromosome, y = Position, color = Chromosome)) + 
   scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
   ggtitle("Distribution of SNPs by Chromosome") +
   theme(plot.title = element_text(hjust = 0.5))
 
 
+#Heat map of SNPs by Chromosome
+ggplot(data = maize) + 
+    geom_bin2d(mapping = aes(x = Chromosome, y = Position), bins = 30) +  # Use geom_bin2d for 2D binning
+    scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+    ggtitle("Heat Density Plot of SNPs by Chromosome") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    theme_classic() +
+    scale_fill_viridis_c() 
 
-# Distribution of SNPs position per chromsome
 
-# Define the proper chromosome order including "multiple" and "unknown"
-proper_chromosome_order <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")
+# FOR TEOSINTE
 
-# Convert the Chromosome column to a factor with the proper order
-maize_data$Chromosome <- factor(maize_data$Chromosome, levels = proper_chromosome_order)
+# Plot the distribution of SNPs by Chromosome
 
-# Plot the SNP distribution on chromosomes using density plot
-ggplot(data = maize_data) + 
-  geom_density(aes(x = Position, color = Chromosome, y = after_stat(count))) + 
-  theme_minimal() +
-  ggtitle("Maize SNP Distribution on Chromosomes") +
+ggplot(data = teosinte) + 
+    geom_bar(mapping = aes(x = Chromosome, fill = Chromosome)) +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  ggtitle("Distribution of SNPs by Chromosome") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme_classic()
+
+
+# Scatter plot of the distribution of SNPs by Chromosome
+ggplot(data = teosinte) + 
+  geom_point(mapping = aes(x = Chromosome, y = Position, color = Chromosome)) + 
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  ggtitle("Distribution of SNPs by Chromosome") +
   theme(plot.title = element_text(hjust = 0.5))
 
+#Heat map of SNPs by Chromosome
+ggplot(data = teosinte) + 
+    geom_bin2d(mapping = aes(x = Chromosome, y = Position), bins = 30) +  # Use geom_bin2d for 2D binning
+    scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+    ggtitle("Heat Density Plot of SNPs by Chromosome") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    theme_classic() +
+    scale_fill_viridis_c() 
 
-#This was repeated for Teosinte using Maize_hyphen.txt in place of maize_sorted.txt
+
+
+#Merged data
+
+# Count SNPs per chromosome for maize
+maize_snp <- maize %>%
+  group_by(Chromosome) %>%
+  summarise(SNP_Count = n()) %>%
+  mutate(Group = "Maize")
+
+# Count SNPs per chromosome for teosinte
+teosinte_snp <- teosinte %>%
+  group_by(Chromosome) %>%
+  summarise(SNP_Count = n()) %>%
+  mutate(Group = "Teosinte")
+
+# Combine data
+snp_counts <- bind_rows(maize_snp, teosinte_snp)
+
+# Plot SNP count per chromosome
+ggplot(snp_counts, aes(x = Chromosome, y = SNP_Count, fill = Group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "SNP Distribution Across Chromosomes",
+       x = "Chromosome", y = "Number of SNPs") +
+  scale_fill_manual(values = c("Maize" = "yellow", "Teosinte" = "purple")) + 
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  theme_classic()
+
+# Scatter plot
+ggplot(snp_counts, aes(x = Chromosome, y = SNP_Count, color = Group)) +
+  geom_point(size = 3, position = position_jitter(width = 0.2, height = 0)) + # Use 'geom_point' to create the scatter plot
+  labs(title = "SNP Distribution Across Chromosomes",
+       x = "Chromosome", y = "Number of SNPs") +
+  scale_color_manual(values = c("Maize" = "yellow", "Teosinte" = "purple")) + 
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) + 
+    theme_classic()
+
+
+#Heat map
+ggplot(snp_counts, aes(x = Chromosome, y = Group, fill = SNP_Count)) +
+  geom_tile(color = "white ") +
+  labs(title = "SNP Distribution Heatmap Across Chromosomes",
+       x = "Chromosome", y = "Group", fill = "SNP Count") +
+  scale_fill_gradient(low = "cyan", high = "blue") +
+  scale_x_discrete(limits = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "multiple", "unknown")) +
+  theme_classic()
+
+
 ```
