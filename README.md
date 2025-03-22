@@ -19,4 +19,5 @@ A description of files within this folder:
 * `Teosinte_chru.txt`: File generated from teosinte data with unknown chromosomes.
 * 
 * `R _Assignment_Script.Rmd`: This file is a syntax and description of codes used to inspect and process assignment files, to generate the files submitted in this folder.
+* 
 * `R_Assignment_Script.pdf`: This file contains my codes and their expected outputs
