@@ -1,0 +1,17 @@
+---
+title: "Sadiya_review"
+author: "Sadiya Ahmad"
+date: "2025-03-24"
+output: pdf_document
+---
+
+I was able to clone your repository and run the Rmd file easily.
+the outcome files were correct. 
+
+I see a missing data place holder but I do not see missing data in that place holder.
+
+I am unable to locate the proportion of homozygous and heterozygous.
+
+Very detailed examination of input files to better understand input size, dimensions, content, and missing data, and great presentation of the results.
+
+Very clear and informative plots for SNP distribution between maize and teosinte.
